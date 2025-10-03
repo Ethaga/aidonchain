@@ -68,9 +68,30 @@ export function Hero({ onGetStarted }: HeroProps) {
                 Get Started
                 <ArrowRight className="ml-2 h-5 w-5" />
               </button>
-              <button className="border-2 border-gray-300 text-gray-700 px-8 py-4 rounded-xl font-semibold hover:border-gray-400 transition-colors">
-                Watch Demo
-              </button>
+              <div className="flex gap-4">
+                <button className="border-2 border-gray-300 text-gray-700 px-8 py-4 rounded-xl font-semibold hover:border-gray-400 transition-colors">
+                  Watch Demo
+                </button>
+                <button
+                  onClick={async () => {
+                    try {
+                      const { veChainService } = await import('../services/vechain');
+                      const res = await veChainService.connectWallet();
+                      if (res.success && res.address) {
+                        window.alert('Connected to VeWorld: ' + res.address);
+                      } else {
+                        window.alert('Connection failed: ' + (res.error || 'Unknown error'));
+                      }
+                    } catch (e) {
+                      window.alert('Failed to connect to VeWorld');
+                    }
+                  }}
+                  className="flex items-center border-2 border-gray-300 text-gray-700 px-6 py-4 rounded-xl font-semibold hover:border-gray-400 transition-colors"
+                >
+                  <img src="https://cdn.builder.io/api/v1/image/assets%2F9f726f94586248d5a947df4f23b59b53%2F58e7c9417afd4cdc887e312012dfaf5b?format=webp&width=800" alt="VeWorld" className="h-4 w-4 mr-3 rounded" />
+                  Connect VeWorld
+                </button>
+              </div>
             </div>
           </div>
         </div>
