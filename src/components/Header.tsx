@@ -103,7 +103,7 @@ export function Header({ currentView, setCurrentView, isConnected, setIsConnecte
               {isConnecting ? (
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
               ) : (
-                <Wallet className="h-4 w-4 mr-2" />
+                <img src="https://cdn.builder.io/api/v1/image/assets%2F9f726f94586248d5a947df4f23b59b53%2F58e7c9417afd4cdc887e312012dfaf5b?format=webp&width=800" alt="VeWorld" className="h-4 w-4 mr-2 rounded" />
               )}
               {isConnecting ? 'Connecting...' : isConnected ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}` : 'Connect VeWorld'}
             </button>
