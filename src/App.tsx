@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { Hero } from './components/Hero';
 import { Dashboard } from './components/Dashboard';
@@ -13,6 +13,18 @@ type View = 'home' | 'donate' | 'distribute' | 'analytics' | 'community' | 'dash
 function App() {
   const [currentView, setCurrentView] = useState<View>('home');
   const [isConnected, setIsConnected] = useState(false);
+
+  useEffect(() => {
+    // initialize veChain service (safe in browser only)
+    (async () => {
+      try {
+        const { veChainService } = await import('./services/vechain');
+        await veChainService.initialize();
+      } catch (e) {
+        // ignore in non-browser env
+      }
+    })();
+  }, []);
 
   const renderView = () => {
     switch (currentView) {
