@@ -73,7 +73,7 @@ class VeChainService {
 
       const accounts = await this.connex.vendor.sign('cert', {
         purpose: 'identification',
-        payload: { type: 'text', content: 'Connect to OnChainAid' }
+        payload: { type: 'text', content: 'Connect to AIDonchain' }
       }).request();
 
       if (accounts && accounts.annex && accounts.annex.signer) {
@@ -89,7 +89,7 @@ class VeChainService {
 
   private saveDonationRecord(record: DonationRecord) {
     try {
-      const key = 'onchainaid_donations_v1';
+      const key = 'aidonchain_donations_v1';
       const existing = localStorage.getItem(key);
       const arr: DonationRecord[] = existing ? JSON.parse(existing) : [];
       arr.push(record);
@@ -101,7 +101,7 @@ class VeChainService {
 
   getDonationsFromStorage(): DonationRecord[] {
     try {
-      const key = 'onchainaid_donations_v1';
+      const key = 'aidonchain_donations_v1';
       const existing = localStorage.getItem(key);
       return existing ? JSON.parse(existing) : [];
     } catch (e) {
@@ -172,7 +172,7 @@ class VeChainService {
 
       const currentAddr = await this.getCurrentAddress();
       if (currentAddr) signingService.signer(currentAddr);
-      signingService.comment('Donate to OnChainAid');
+      signingService.comment('Donate to AIDonchain');
 
       const result = await signingService.request();
 

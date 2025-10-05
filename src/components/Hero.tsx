@@ -55,8 +55,8 @@ export function Hero({ onGetStarted }: HeroProps) {
             </h1>
             
             <p className="text-xl text-gray-600 mb-10 max-w-3xl mx-auto leading-relaxed">
-              OnChainAid ensures complete transparency in social aid distribution through 
-              100% on-chain operations on VeChain blockchain, powered by AI analytics and 
+              AIDonchain ensures complete transparency in social aid distribution through
+              100% on-chain operations on VeChain blockchain, powered by AI analytics and
               community validation.
             </p>
             
