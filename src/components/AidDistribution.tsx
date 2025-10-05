@@ -1,10 +1,31 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { MapPin, Users, Clock, CheckCircle, AlertTriangle, Filter } from 'lucide-react';
+import { veChainService } from '../services/vechain';
+
+type RequestStatus = 'active' | 'ready' | 'distributed';
+
+interface DistributionRequest {
+  id: string;
+  title: string;
+  location: string;
+  urgency: string;
+  category: string;
+  requested: string; // dollar string
+  raised: string; // dollar string
+  recipients: number;
+  validator: string; // initial validator address
+  status: RequestStatus | string;
+  timeLeft: string;
+  description: string;
+  validators?: string[]; // addresses who validated
+}
+
+const STORAGE_KEY_REQUESTS = 'onchainaid_distribution_requests_v1';
+const STORAGE_KEY_VALIDATIONS = 'onchainaid_validations_v1';
+const VALIDATION_THRESHOLD = 3;
 
 export function AidDistribution() {
-  const [selectedFilter, setSelectedFilter] = useState('all');
-
-  const distributionRequests = [
+  const initialRequests: DistributionRequest[] = [
     {
       id: '1',
       title: 'Emergency Medical Aid - Jakarta',
@@ -17,7 +38,8 @@ export function AidDistribution() {
       validator: '0x742d35Cc6635C0532925a3b8D55dEdc4CF384df9',
       status: 'active',
       timeLeft: '2 days',
-      description: 'Urgent medical supplies needed for flood victims in Jakarta region. AI analysis shows high priority distribution need.'
+      description: 'Urgent medical supplies needed for flood victims in Jakarta region. AI analysis shows high priority distribution need.',
+      validators: []
     },
     {
       id: '2',
@@ -31,7 +53,8 @@ export function AidDistribution() {
       validator: '0x8ba1f109551bD432803012645Hac136c30B70c08',
       status: 'ready',
       timeLeft: 'Ready for distribution',
-      description: 'Educational materials and school supplies for underprivileged children. Community validated and ready for distribution.'
+      description: 'Educational materials and school supplies for underprivileged children. Community validated and ready for distribution.',
+      validators: []
     },
     {
       id: '3',
@@ -45,18 +68,38 @@ export function AidDistribution() {
       validator: '0x9f8e7D6c5B4a3E2F1d0C9b8A7f6E5d4C3b2A1F0E',
       status: 'active',
       timeLeft: '5 days',
-      description: 'Monthly food packages for families affected by economic hardship. AI recommends immediate attention.'
+      description: 'Monthly food packages for families affected by economic hardship. AI recommends immediate attention.',
+      validators: []
     }
   ];
 
+  const [selectedFilter, setSelectedFilter] = useState('all');
+  const [requests, setRequests] = useState<DistributionRequest[]>(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY_REQUESTS);
+      if (raw) return JSON.parse(raw) as DistributionRequest[];
+    } catch (e) {
+      // ignore
+    }
+    return initialRequests;
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY_REQUESTS, JSON.stringify(requests));
+    } catch (e) {
+      // ignore
+    }
+  }, [requests]);
+
   const filters = [
-    { id: 'all', label: 'All Requests', count: distributionRequests.length },
-    { id: 'active', label: 'Active', count: distributionRequests.filter(r => r.status === 'active').length },
-    { id: 'ready', label: 'Ready', count: distributionRequests.filter(r => r.status === 'ready').length },
-    { id: 'high', label: 'High Priority', count: distributionRequests.filter(r => r.urgency === 'high').length }
+    { id: 'all', label: 'All Requests', count: requests.length },
+    { id: 'active', label: 'Active', count: requests.filter(r => r.status === 'active').length },
+    { id: 'ready', label: 'Ready', count: requests.filter(r => r.status === 'ready').length },
+    { id: 'high', label: 'High Priority', count: requests.filter(r => r.urgency === 'high').length }
   ];
 
-  const filteredRequests = distributionRequests.filter(request => {
+  const filteredRequests = requests.filter(request => {
     if (selectedFilter === 'all') return true;
     if (selectedFilter === 'active') return request.status === 'active';
     if (selectedFilter === 'ready') return request.status === 'ready';
@@ -76,8 +119,140 @@ export function AidDistribution() {
     switch (status) {
       case 'active': return 'bg-blue-100 text-blue-800';
       case 'ready': return 'bg-green-100 text-green-800';
+      case 'distributed': return 'bg-gray-100 text-gray-800';
       default: return 'bg-gray-100 text-gray-800';
     }
+  };
+
+  const parseDollar = (s: string) => Number(s.replace(/[^0-9.-]+/g, ''));
+  const formatDollar = (n: number) => '$' + Math.round(n).toLocaleString();
+
+  const handleContribute = async (id: string) => {
+    const req = requests.find(r => r.id === id);
+    if (!req) return;
+
+    const input = window.prompt(`Enter contribution amount in VET (min 1 VET) for "${req.title}"`, '1');
+    if (!input) return;
+    const amount = parseFloat(input);
+    if (isNaN(amount) || amount <= 0) {
+      window.alert('Invalid amount');
+      return;
+    }
+    if (amount < 1) {
+      window.alert('Minimum donation is 1 VET');
+      return;
+    }
+
+    // Ensure wallet connected
+    if (!veChainService.isVeWorldInstalled()) {
+      window.alert('Please install VeWorld wallet from https://www.veworld.net/');
+      return;
+    }
+
+    const conn = await veChainService.connectWallet();
+    if (!conn.success) {
+      window.alert('Wallet connection failed: ' + (conn.error || 'unknown'));
+      return;
+    }
+
+    // Call donation flow (will save local donation record inside service)
+    const res = await veChainService.makeDonation({
+      category: req.category,
+      message: `Contribution to request ${req.id} - ${req.title}`,
+      amount: String(amount)
+    });
+
+    if (res.success && res.txId) {
+      // Update raised amount (assume raised is dollar value; we will approximate VET -> USD parity not available,
+      // so we treat raised field as VET for the purpose of progress change to show immediate feedback.)
+      // Parse current raised/requested as numbers and add contribution to raised.
+      const currentRaised = parseDollar(req.raised);
+      const newRaised = currentRaised + amount; // mixing VET and $ for display is best-effort
+
+      setRequests(prev => prev.map(r => r.id === id ? { ...r, raised: formatDollar(newRaised) } : r));
+
+      window.alert(`Donation submitted. Tx: ${res.txId}`);
+    } else {
+      window.alert('Donation failed: ' + (res.error || 'unknown error'));
+    }
+  };
+
+  const handleValidate = async (id: string) => {
+    const req = requests.find(r => r.id === id);
+    if (!req) return;
+
+    if (!veChainService.isVeWorldInstalled()) {
+      window.alert('Please install VeWorld wallet from https://www.veworld.net/');
+      return;
+    }
+
+    // Get current address (will prompt wallet if needed)
+    const addr = await veChainService.getCurrentAddress();
+    if (!addr) {
+      const conn = await veChainService.connectWallet();
+      if (!conn.success) {
+        window.alert('Wallet connection failed: ' + (conn.error || 'unknown'));
+        return;
+      }
+    }
+
+    const currentAddr = (await veChainService.getCurrentAddress()) || 'unknown';
+
+    // Check if already validated
+    if (req.validators && req.validators.includes(currentAddr)) {
+      window.alert('You have already validated this request');
+      return;
+    }
+
+    // Persist validation in localStorage
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY_VALIDATIONS);
+      const arr: { requestId: string; address: string; timestamp: number }[] = raw ? JSON.parse(raw) : [];
+      arr.push({ requestId: id, address: currentAddr, timestamp: Date.now() });
+      localStorage.setItem(STORAGE_KEY_VALIDATIONS, JSON.stringify(arr));
+    } catch (e) {
+      // ignore
+    }
+
+    // Update in-memory state
+    setRequests(prev => prev.map(r => {
+      if (r.id !== id) return r;
+      const validators = Array.from(new Set([...(r.validators || []), currentAddr]));
+      const status = validators.length >= VALIDATION_THRESHOLD ? 'ready' : r.status;
+      // If became ready, set timeLeft accordingly
+      return { ...r, validators, status };
+    }));
+
+    window.alert('Validation recorded. Thank you for validating.');
+  };
+
+  const handleDistribute = async (id: string) => {
+    const req = requests.find(r => r.id === id);
+    if (!req) return;
+
+    if (req.status !== 'ready') {
+      window.alert('Request is not ready for distribution');
+      return;
+    }
+
+    const ok = window.confirm(`Are you sure you want to mark "${req.title}" as distributed? This action will record the distribution on-chain (simulated) and update status.`);
+    if (!ok) return;
+
+    // For now we simulate the distribution record locally and update status
+    try {
+      const distKey = 'onchainaid_distributions_v1';
+      const raw = localStorage.getItem(distKey);
+      const arr: { requestId: string; distributor: string; timestamp: number }[] = raw ? JSON.parse(raw) : [];
+      const addr = (await veChainService.getCurrentAddress()) || 'unknown';
+      arr.push({ requestId: id, distributor: addr, timestamp: Date.now() });
+      localStorage.setItem(distKey, JSON.stringify(arr));
+    } catch (e) {
+      // ignore
+    }
+
+    setRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'distributed', timeLeft: 'Distributed' } : r));
+
+    window.alert('Distribution recorded locally. If you need an on-chain distribution call, provide the distribution contract ABI and we can wire a transaction.');
   };
 
   return (
@@ -157,8 +332,7 @@ export function AidDistribution() {
                   <div 
                     className="bg-gradient-to-r from-blue-500 to-green-500 h-2 rounded-full transition-all duration-300"
                     style={{ 
-                      width: `${(parseInt(request.raised.replace('$', '').replace(',', '')) / 
-                               parseInt(request.requested.replace('$', '').replace(',', ''))) * 100}%` 
+                      width: `${(parseDollar(request.raised) / parseDollar(request.requested)) * 100}%` 
                     }}
                   ></div>
                 </div>
@@ -184,21 +358,26 @@ export function AidDistribution() {
                 <div className="text-xs text-blue-800 font-mono">
                   {request.validator.slice(0, 20)}...
                 </div>
+                <div className="text-xs text-gray-600 mt-2">
+                  {request.validators && request.validators.length ? `${request.validators.length} community validations` : 'No community validations yet'}
+                </div>
               </div>
 
               {/* Actions */}
               <div className="flex space-x-3">
                 {request.status === 'ready' ? (
-                  <button className="flex-1 bg-green-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors flex items-center justify-center">
+                  <button onClick={() => handleDistribute(request.id)} className="flex-1 bg-green-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors flex items-center justify-center">
                     <CheckCircle className="h-4 w-4 mr-2" />
                     Distribute Now
                   </button>
+                ) : request.status === 'distributed' ? (
+                  <button disabled className="flex-1 bg-gray-200 text-gray-500 py-2 px-4 rounded-lg text-sm font-medium flex items-center justify-center">Distributed</button>
                 ) : (
                   <>
-                    <button className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
+                    <button onClick={() => handleContribute(request.id)} className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
                       Contribute
                     </button>
-                    <button className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                    <button onClick={() => handleValidate(request.id)} className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
                       Validate
                     </button>
                   </>
