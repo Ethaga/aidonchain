@@ -36,10 +36,8 @@ export function Footer() {
           {/* Brand */}
           <div className="lg:col-span-1">
             <div className="flex items-center mb-4">
-              <div className="bg-gradient-to-r from-blue-600 to-green-600 p-2 rounded-xl">
-                <Heart className="h-6 w-6 text-white" />
-              </div>
-              <span className="ml-3 text-xl font-bold">OnChainAid</span>
+              <img src="https://cdn.builder.io/api/v1/image/assets%2F9f726f94586248d5a947df4f23b59b53%2F07af4452ecec4a3ca1512d2be8833a27?format=webp&width=800" alt="AIDonchain" className="h-8 w-auto" />
+              <span className="ml-3 text-xl font-bold">AIDonchain</span>
             </div>
             <p className="text-gray-400 text-sm leading-relaxed mb-6">
               Revolutionizing social aid distribution through 100% on-chain transparency, 
@@ -139,7 +137,7 @@ export function Footer() {
         <div className="mt-12 pt-8 border-t border-gray-800">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <p className="text-gray-400 text-sm">
-              © 2024 OnChainAid. All rights reserved. Built on VeChain blockchain.
+              © 2024 AIDonchain. All rights reserved. Built on VeChain blockchain.
             </p>
             <div className="mt-4 md:mt-0">
               <p className="text-gray-400 text-sm">

@@ -60,10 +60,8 @@ export function Header({ currentView, setCurrentView, isConnected, setIsConnecte
             className="flex items-center cursor-pointer"
             onClick={() => setCurrentView('home')}
           >
-            <div className="bg-gradient-to-r from-blue-600 to-green-600 p-2 rounded-xl">
-              <Heart className="h-6 w-6 text-white" />
-            </div>
-            <span className="ml-3 text-xl font-bold text-gray-900">OnChainAid</span>
+            <img src="https://cdn.builder.io/api/v1/image/assets%2F9f726f94586248d5a947df4f23b59b53%2F07af4452ecec4a3ca1512d2be8833a27?format=webp&width=800" alt="AIDonchain" className="h-8 w-auto" />
+            <span className="ml-3 text-xl font-bold text-gray-900">AIDonchain</span>
           </div>
 
           {/* Desktop Navigation */}
