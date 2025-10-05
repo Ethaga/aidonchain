@@ -69,9 +69,14 @@ export function Hero({ onGetStarted }: HeroProps) {
                 <ArrowRight className="ml-2 h-5 w-5" />
               </button>
               <div className="flex gap-4">
-                <button className="border-2 border-gray-300 text-gray-700 px-8 py-4 rounded-xl font-semibold hover:border-gray-400 transition-colors">
+                <a
+                  href="https://youtu.be/Q4V2p9eCSwY"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="border-2 border-gray-300 text-gray-700 px-8 py-4 rounded-xl font-semibold hover:border-gray-400 transition-colors inline-flex items-center justify-center"
+                >
                   Watch Demo
-                </button>
+                </a>
                 <button
                   onClick={async () => {
                     try {
